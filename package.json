@@ -1,5 +1,5 @@
 {
-  "name": "Jamaica-bot",
+  "main": "jamaica.js"
   "version": "1.0.0",
   "description": "بوت واتساب - جمايكا",
   "main": "jamaica.js",

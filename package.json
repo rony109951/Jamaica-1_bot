@@ -2,9 +2,9 @@
   "name": "Jamaica-bot",
   "version": "1.0.0",
   "description": "بوت واتساب - جمايكا",
-  "main": "Jamaica.js",
+  "main": "jamaica.js",
   "scripts": {
-    "start": "node Jamaica.js"
+    "start": "node jamaica.js"
   },
   "dependencies": {
     "@whiskeysockets/baileys": "^6.6.0",

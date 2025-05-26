@@ -1,0 +1,15 @@
+{
+  "name": "Jamaica-bot",
+  "version": "1.0.0",
+  "description": "بوت واتساب - جمايكا",
+  "main": "Jamaica.js",
+  "scripts": {
+    "start": "node Jamaica.js"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.6.0",
+    "@hapi/boom": "^10.0.1"
+  },
+  "author": "جمايكا",
+  "license": "MIT"
+}

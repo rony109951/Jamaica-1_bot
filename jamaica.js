@@ -1,68 +1,37 @@
+// jamaica.js - الملف الرئيسي لتشغيل البوت
 
-const { makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = require("@whiskeysockets/baileys");
-const fs = require("fs");
-const path = require("path");
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, makeInMemoryStore } = require("@whiskeysockets/baileys"); const { Boom } = require("@hapi/boom"); const pino = require("pino"); const fs = require("fs"); const path = require("path");
 
-// تحميل جميع الأوامر من مجلد commands (يشمل مجلدات فرعية)
-function loadCommands(dir, commands = {}) {
-  const files = fs.readdirSync(dir);
-  for (const file of files) {
-    const filePath = path.join(dir, file);
-    if (fs.statSync(filePath).isDirectory()) {
-      loadCommands(filePath, commands); // لو مجلد داخلي
-    } else if (file.endsWith(".js")) {
-      const cmd = require(filePath);
-      if (cmd.name && typeof cmd.run === "function") {
-        commands[cmd.name] = cmd.run;
+// إعدادات التخزين const store = makeInMemoryStore({ logger: pino().child({ level: "silent", stream: "store" }) }); store.readFromFile("./baileys_store.json"); setInterval(() => { store.writeToFile("./baileys_store.json"); }, 10_000);
+
+// إعداد الاتصال async function startBot() { const { state, saveCreds } = await useMultiFileAuthState("auth_info_baileys"); const sock = makeWASocket({ logger: pino({ level: "silent" }), printQRInTerminal: true, auth: state, browser: ["JamaicaBot", "Safari", "1.0.0"], syncFullHistory: true });
+
+store.bind(sock.ev);
+
+sock.ev.on("connection.update", async (update) => { const { connection, lastDisconnect } = update; if (connection === "close") { const shouldReconnect = lastDisconnect.error instanceof Boom && lastDisconnect.error.output.statusCode !== DisconnectReason.loggedOut; if (shouldReconnect) { startBot(); } } else if (connection === "open") { console.log("[BOT] Bot connected successfully"); } });
+
+sock.ev.on("creds.update", saveCreds);
+
+// تحميل ومعالجة الرسائل sock.ev.on("messages.upsert", async (m) => { if (!m.messages || !m.messages[0]) return; const msg = m.messages[0]; if (msg.key && msg.key.remoteJid === "status@broadcast") return; if (!msg.message) return;
+
+try {
+  const commandFiles = fs.readdirSync(path.join(__dirname)).filter(file => file.endsWith(".js") && file !== "jamaica.js");
+  for (const file of commandFiles) {
+    const filePath = path.join(__dirname, file);
+    try {
+      const command = require(filePath);
+      if (typeof command ===  function ) {
+        await command(sock, msg);
       }
+    } catch (err) {
+      console.error("[ERROR] في الملف:", file, err.message);
     }
   }
-  return commands;
+} catch (err) {
+  console.error("[ERROR] أثناء معالجة الأوامر:", err);
 }
 
-async function startBot() {
-  const { state, saveCreds } = await useMultiFileAuthState("session");
-  const { version } = await fetchLatestBaileysVersion();
-  const sock = makeWASocket({
-    auth: state,
-    version,
-    printQRInTerminal: true
-  });
-
-  // تحميل الأوامر
-  const commands = loadCommands(path.join(__dirname, "commands"));
-
-  sock.ev.on("messages.upsert", async ({ messages }) => {
-    const msg = messages[0];
-    if (!msg.message || msg.key.fromMe) return;
-
-    const from = msg.key.remoteJid;
-    const type = Object.keys(msg.message)[0];
-    const body = msg.message[type]?.text || msg.message.conversation || "";
-
-    const prefix = ".";
-    if (!body.startsWith(prefix)) return;
-
-    const args = body.slice(prefix.length).trim().split(/ +/);
-    const commandName = args.shift().toLowerCase();
-
-    if (commands[commandName]) {
-      try {
-        await commands[commandName](sock, msg, args);
-      } catch (err) {
-        console.error("خطأ في تنفيذ الأمر:", err);
-        await sock.sendMessage(from, { text: "حصل خطأ أثناء تنفيذ الأمر." });
-      }
-    }
-  });
-
-  sock.ev.on("creds.update", saveCreds);
-  sock.ev.on("connection.update", ({ connection }) => {
-    if (connection === "close") {
-      console.log("تم قطع الاتصال. إعادة الاتصال...");
-      startBot();
-    }
-  });
-}
+}); }
 
 startBot();
+

@@ -1,4 +1,3 @@
-
 // jamaica.js - الملف الرئيسي لتشغيل البوت
 
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, makeInMemoryStore } = require("@whiskeysockets/baileys");
